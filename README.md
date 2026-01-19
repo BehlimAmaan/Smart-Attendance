@@ -1,8 +1,3 @@
-Below is a **complete, professional `README.md`** written in **simple English**, suitable for **GitHub, interviews, and product documentation**.
-You can directly **copy–paste** this into your `README.md` file.
-
----
-
 # Smart Attendance System 🚀
 
 **Face Recognition + Liveness Detection Based Attendance Platform**
