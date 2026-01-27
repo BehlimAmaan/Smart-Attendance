@@ -12,5 +12,7 @@ tzdata==2025.1
 django-cors-headers==4.3.1
 gunicorn==22.0.0
 opencv-python-headless==4.10.0.84
-
-
+torch
+torchvision
+face_recognition
+pandas

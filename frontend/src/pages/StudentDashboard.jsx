@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import AttendanceSummary from "../components/student/AttendanceSummary";
 import AttendanceHistory from "../components/student/AttendanceHistory";
 import ScanQR from "../components/student/ScanQR";
+import StudentNotices from "../components/student/StudentNotices";
 
 export default function StudentDashboard() {
   const [session, setSession] = useState(null);
@@ -61,6 +62,9 @@ export default function StudentDashboard() {
           session={session}
           marked={attendanceMarked}
         />
+        
+        {/* NOTICES */}
+        <StudentNotices />
 
         {/* FACE STATUS */}
         <div className="card">

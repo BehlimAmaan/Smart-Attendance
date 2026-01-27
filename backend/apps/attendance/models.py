@@ -2,7 +2,6 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import Q
 
 User = settings.AUTH_USER_MODEL
 
@@ -19,15 +18,20 @@ class AttendanceSession(models.Model):
     # GEOFENCING
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
-    radius_meters = models.PositiveIntegerField(default=50)  
+    radius_meters = models.PositiveIntegerField(default=150)
+
+    # TIME CONTROL
+    duration_minutes = models.PositiveIntegerField()
+    start_time = models.DateTimeField(auto_now_add=True)
+    end_time = models.DateTimeField()
 
     is_active = models.BooleanField(default=True)
-    start_time = models.DateTimeField(auto_now_add=True)
-    end_time = models.DateTimeField(null=True, blank=True)
+
+    def has_expired(self):
+        return timezone.now() > self.end_time
 
     def __str__(self):
         return f"{self.subject} ({self.teacher})"
-
 
 
 # ATTENDANCE RECORD
@@ -68,7 +72,7 @@ class AttendanceRecord(models.Model):
         return f"{self.student} - {self.session.subject}"
 
 
-# QR TOKEN (SHORT-LIVED)
+# QR TOKEN
 class QRToken(models.Model):
     session = models.ForeignKey(
         AttendanceSession,
@@ -82,6 +86,3 @@ class QRToken(models.Model):
 
     def is_expired(self):
         return timezone.now() > self.created_at + timedelta(seconds=5)
-
-    def __str__(self):
-        return f"QRToken({self.session.subject})"

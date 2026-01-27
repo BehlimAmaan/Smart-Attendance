@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import api from "../api/axios";
 import { QRCodeCanvas } from "qrcode.react";
 import "./TeacherDashboard.css";
+import NoticePanel from "../components/NoticePanel";
 
 export default function TeacherDashboard() {
   const [subject, setSubject] = useState("");
   const [className, setClassName] = useState("");
   const [semester, setSemester] = useState("");
-
+  const [duration, setDuration] = useState(10);
   const [session, setSession] = useState(null);
   const [file, setFile] = useState(null);
   const [uploadResult, setUploadResult] = useState(null);
@@ -15,11 +16,11 @@ export default function TeacherDashboard() {
   const [liveData, setLiveData] = useState(null);
   const [students, setStudents] = useState([]);
   const [locationStatus, setLocationStatus] = useState("idle");
-
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
 
   /* ---------------- GET LOCATION ---------------- */
-  const getLocation = () =>
-    new Promise((resolve, reject) => {
+  const getLocation = () => {
+    return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
         setLocationStatus("error");
         reject(new Error("Geolocation not supported"));
@@ -37,10 +38,14 @@ export default function TeacherDashboard() {
           setLocationStatus("error");
           reject(new Error("Location permission denied"));
         },
-        { enableHighAccuracy: true }
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 10000,
+        }
       );
     });
-
+  };
   /* ---------------- START SESSION ---------------- */
   const startSession = async () => {
     if (!subject || !className || !semester) {
@@ -54,10 +59,12 @@ export default function TeacherDashboard() {
         subject,
         latitude: coords.latitude,
         longitude: coords.longitude,
-        radius: 50, 
+        radius: 150,
+        duration_minutes: duration,
       });
 
       setSession(res.data);
+      setRemainingSeconds(res.data.remaining_seconds);
     } catch (err) {
       alert(
         err.message ||
@@ -150,13 +157,15 @@ export default function TeacherDashboard() {
       try {
         const res = await api.get("attendance/live/");
         setLiveData(res.data);
+
       } catch {
         setLiveData(null);
       }
     };
 
-    fetchLive();
+    fetchLive(); // initial call
     const interval = setInterval(fetchLive, 3000);
+
     return () => clearInterval(interval);
   }, [session]);
 
@@ -166,6 +175,33 @@ export default function TeacherDashboard() {
       .then((res) => setStudents(res.data.students))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (remainingSeconds === null) return;
+
+    const timer = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev === null) return prev;
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [remainingSeconds !== null]);
+
+  useEffect(() => {
+    if (remainingSeconds === 0) {
+      alert("⏱ Attendance session has ended automatically");
+
+      setSession(null);
+      setQrToken(null);
+      setLiveData(null);
+    }
+  }, [remainingSeconds]);
 
   /* ---------------- UI ---------------- */
   return (
@@ -233,6 +269,9 @@ export default function TeacherDashboard() {
             </div>
           )}
         </div>
+        
+        {/* NOTICE PANEL */}
+        <NoticePanel />
 
         {/* START / END ATTENDANCE */}
         <div className={`card ${session ? 'session-active' : ''}`}>
@@ -261,6 +300,13 @@ export default function TeacherDashboard() {
                 value={semester}
                 onChange={(e) => setSemester(e.target.value)}
               />
+              <input
+                type="number"
+                min="1"
+                placeholder="Session Duration (minutes)"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+              />
               <button className="primary" onClick={startSession}>
                 ▶️ Start Attendance Session
               </button>
@@ -268,7 +314,6 @@ export default function TeacherDashboard() {
           ) : (
             <>
               <h3>Attendance Session Active</h3>
-
               <div className="status-box">
                 <p style={{color: '#10b981', fontSize: '16px', fontWeight: 'bold'}}>
                   🟢 LIVE ATTENDANCE RUNNING
@@ -276,6 +321,14 @@ export default function TeacherDashboard() {
                 <p>
                   <b>Subject:</b> {session.subject}
                 </p>
+                {remainingSeconds !== null && (
+                  <p style={{ fontWeight: "bold", color: "#f59e0b" }}>
+                    ⏳ Time left: {Math.floor(remainingSeconds / 60)}:
+                    {(remainingSeconds % 60).toString().padStart(2, "0")}
+                  </p>
+                )}
+
+
                 {liveData && (
                   <p>
                     <b>Attendance:</b> {liveData.present_count} /{" "}

@@ -7,7 +7,7 @@ import math
 
 from django.db import transaction, IntegrityError
 from django.utils import timezone
-from django.conf import settings
+from datetime import timedelta
 import secrets
 
 from apps.face_liveness.liveness_engine import LivenessEngine
@@ -15,7 +15,7 @@ from apps.face_liveness.face_matcher import FaceMatcher
 from anti_spoofing.spoof_detector import SpoofDetector
 
 from .models import AttendanceSession, AttendanceRecord, QRToken
-from .serializers import AttendanceSessionSerializer, AttendanceRecordSerializer
+from .serializers import AttendanceSessionSerializer
 
 import cv2
 import numpy as np
@@ -26,8 +26,10 @@ face_matcher = FaceMatcher()
 spoof_detector = SpoofDetector()
 
 
-def is_within_radius(lat1, lon1, lat2, lon2, radius):
+# ✅ FIXED LOCATION CHECK (GPS-REALISTIC)
+def is_within_radius(lat1, lon1, lat2, lon2, radius, accuracy=0):
     R = 6371000  # meters
+
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
@@ -39,8 +41,12 @@ def is_within_radius(lat1, lon1, lat2, lon2, radius):
         math.sin(dlambda / 2) ** 2
     )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c <= radius
+    distance = R * c
 
+    # Dynamic buffer for GPS noise (minimum 50m)
+    allowed_distance = radius + max(accuracy, 50)
+
+    return distance <= allowed_distance
 
 
 class StartAttendanceSessionAPIView(APIView):
@@ -53,33 +59,39 @@ class StartAttendanceSessionAPIView(APIView):
         subject = request.data.get("subject")
         latitude = request.data.get("latitude")
         longitude = request.data.get("longitude")
-        radius = request.data.get("radius", 50)
+        radius = request.data.get("radius", 150)
+        duration = request.data.get("duration_minutes")
 
-        if not subject or latitude is None or longitude is None:
+        if not subject or latitude is None or longitude is None or not duration:
             return Response(
-                {"detail": "Subject and location required"},
+                {"detail": "Subject, location and duration required"},
                 status=400
             )
+
+        start_time = timezone.now()
+        end_time = start_time + timedelta(minutes=int(duration))
 
         with transaction.atomic():
             AttendanceSession.objects.filter(
                 teacher=request.user,
                 is_active=True
-            ).update(is_active=False, end_time=timezone.now())
+            ).update(is_active=False)
 
             session = AttendanceSession.objects.create(
                 teacher=request.user,
                 subject=subject,
                 latitude=latitude,
                 longitude=longitude,
-                radius_meters=radius
+                radius_meters=radius,
+                duration_minutes=duration,
+                start_time=start_time,
+                end_time=end_time
             )
 
         return Response(
             AttendanceSessionSerializer(session).data,
             status=201
         )
-
 
 
 class EndAttendanceSessionAPIView(APIView):
@@ -103,7 +115,6 @@ class EndAttendanceSessionAPIView(APIView):
         session.save()
 
         return Response({"detail": "Session ended"}, status=200)
-
 
 
 class GenerateQRTokenAPIView(APIView):
@@ -131,7 +142,6 @@ class GenerateQRTokenAPIView(APIView):
         })
 
 
-
 class MarkAttendanceAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -153,14 +163,19 @@ class MarkAttendanceAPIView(APIView):
         except AttendanceSession.DoesNotExist:
             return Response({"detail": "Session not active"}, status=404)
 
+        if session.has_expired():
+            session.is_active = False
+            session.save()
+            return Response(
+                {"detail": "Attendance session has ended"},
+                status=403
+            )
+
         try:
             student_profile = request.user.student_profile
         except Exception:
             return Response(
-                {
-                    "detail": "Student profile not found. Please contact your teacher.",
-                    "error_code": "STUDENT_PROFILE_MISSING"
-                },
+                {"detail": "Student profile not found"},
                 status=403
             )
 
@@ -170,24 +185,40 @@ class MarkAttendanceAPIView(APIView):
                 status=403
             )
 
-        # GEOFENCE CHECK
-        lat = request.data.get("latitude")
-        lon = request.data.get("longitude")
+        # ✅ LOCATION CHECK FIXED
+        if method == "FACE":
+            lat = request.data.get("latitude")
+            lon = request.data.get("longitude")
+            accuracy = request.data.get("accuracy", 0)
 
-        if lat is None or lon is None:
-            return Response({"detail": "Location required"}, status=400)
+            if lat is None or lon is None:
+                return Response({"detail": "Location required"}, status=400)
 
-        if not is_within_radius(
-            float(lat),
-            float(lon),
-            session.latitude,
-            session.longitude,
-            session.radius_meters
-        ):
-            return Response(
-                {"detail": "You are outside the attendance area"},
-                status=403
-            )
+            lat = float(lat)
+            lon = float(lon)
+            accuracy = float(accuracy)
+
+            if accuracy > 300:
+                location_ok = True
+            else:
+                location_ok = is_within_radius(
+                    lat,
+                    lon,
+                    session.latitude,
+                    session.longitude,
+                    session.radius_meters,
+                    accuracy
+                )
+
+            if not location_ok:
+                return Response(
+                    {
+                        "detail": "You are outside the attendance area",
+                        "allowed_radius": session.radius_meters,
+                        "gps_accuracy": accuracy
+                    },
+                    status=403
+                )
 
         if method == "FACE":
             face_image = request.FILES.get("face_image")
@@ -216,10 +247,7 @@ class MarkAttendanceAPIView(APIView):
                 return Response({"detail": "Liveness failed"}, status=400)
 
             if not request.user.face_embedding:
-                return Response(
-                    {"detail": "Face not registered", "error_code": "FACE_NOT_REGISTERED"},
-                    status=403
-                )
+                return Response({"detail": "Face not registered"}, status=403)
 
             stored_embedding = pickle.loads(request.user.face_embedding)
             live_embedding = face_matcher.get_embedding(face_img)
@@ -235,7 +263,6 @@ class MarkAttendanceAPIView(APIView):
             if not match:
                 request.user.face_embedding = None
                 request.user.save()
-
                 return Response(
                     {
                         "detail": "Face mismatch",
@@ -246,25 +273,20 @@ class MarkAttendanceAPIView(APIView):
                 )
 
         try:
-            with transaction.atomic():
-                record = AttendanceRecord.objects.create(
-                    student=request.user,
-                    session=session,
-                    method=method
-                )
+            AttendanceRecord.objects.create(
+                student=request.user,
+                session=session,
+                method=method
+            )
         except IntegrityError:
             return Response(
                 {"detail": "Attendance already marked"},
                 status=400
             )
 
-        return Response(
-            AttendanceRecordSerializer(record).data,
-            status=201
-        )
+        return Response({"detail": "Attendance marked"}, status=201)
 
 
-# ACTIVE SESSION (STUDENT)
 class ActiveAttendanceSessionAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -273,12 +295,12 @@ class ActiveAttendanceSessionAPIView(APIView):
             is_active=True
         ).order_by("-start_time").first()
 
-        if not session and getattr(settings, "TEST_MODE", False):
-            session = AttendanceSession.objects.filter(
-                is_active=False
-            ).order_by("-start_time").first()
-
         if not session:
+            return Response({"active": False})
+
+        if session.has_expired():
+            session.is_active = False
+            session.save()
             return Response({"active": False})
 
         return Response({
@@ -287,6 +309,10 @@ class ActiveAttendanceSessionAPIView(APIView):
             "subject": session.subject,
             "teacher": session.teacher.email,
             "start_time": session.start_time,
+            "end_time": session.end_time,
+            "remaining_seconds": int(
+                (session.end_time - timezone.now()).total_seconds()
+            )
         })
 
 

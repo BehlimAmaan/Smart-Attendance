@@ -12,10 +12,6 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -26,14 +22,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-secret-for-dev")
+SECRET_KEY = "django-insecure-*1x&9w0r!8+hcf-nw*s#+%c5f1+dh0bkc!r78o4n@1#&vwuirt"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = True
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
 
 # Application definition
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -41,9 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'rest_framework',
-
     'apps.accounts.apps.AccountsConfig',
     'apps.students.apps.StudentsConfig',
     'apps.teachers.apps.TeachersConfig',
@@ -51,8 +47,8 @@ INSTALLED_APPS = [
     'apps.face_liveness.apps.FaceLivenessConfig',
     'apps.qr_attendance.apps.QRAttendanceConfig',
     'apps.reports.apps.ReportsConfig',
-    
-     "corsheaders",
+    'apps.notices.apps.NoticesConfig',
+    "corsheaders",
 ]
 
 
@@ -91,26 +87,18 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": "smart_attendance_db",
-#         "USER": "postgres",
-#         "PASSWORD": "amaan@123",
-#         "HOST": "localhost",
-#         "PORT": "5432",
-#     }
-# }
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        "NAME": "smart_attendance_db",
+        "USER": "postgres",
+        "PASSWORD": "NeverSettle@99",
+        "HOST": "localhost",
+        "PORT": "5432",
     }
 }
+
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -172,22 +160,20 @@ EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-# EMAIL_HOST_USER = "itzamaanbehlim45@gmail.com"
-# EMAIL_HOST_PASSWORD = "sikf naoo uqpk ahnj"
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_USER = "itzamaanbehlim45@gmail.com"
+EMAIL_HOST_PASSWORD = "sikf naoo uqpk ahnj"
 
 DEFAULT_FROM_EMAIL = "Smart Attendance <itzamaanbehlim45@gmail.com>"
 
 
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
 
 TEST_MODE = True
 
 FRONTEND_URL = "http://localhost:5173"
 
-STATIC_ROOT = BASE_DIR / "staticfiles"
+ALLOWED_HOSTS = ["*"]
 
-
-
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://smart-attendance.onrender.com/api/",
+  baseURL: "http://127.0.0.1:8000/api/",
 });
 
 api.interceptors.request.use(
@@ -32,7 +32,7 @@ api.interceptors.response.use(
         const refresh = localStorage.getItem("refresh");
 
         const res = await axios.post(
-          "https://smart-attendance.onrender.com/api/accounts/token/refresh/",
+          "http://127.0.0.1:8000/api/accounts/token/refresh/",
           { refresh }
         );
 
