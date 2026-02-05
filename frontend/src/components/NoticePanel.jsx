@@ -90,7 +90,7 @@ export default function NoticePanel() {
 
       <button onClick={submitNotice}>📤 Upload Notice</button>
 
-      <hr />
+      {/* <hr style={{borderBlock:"rgba(99, 102, 241, 0.3)"}} /> */}
 
       {notices.map(n => (
         <div
@@ -99,22 +99,26 @@ export default function NoticePanel() {
             marginTop: "14px",
             padding: "10px",
             border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "8px"
+            borderRadius: "8px",
+            
+            
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", gap: "69rem",width:120 }}>
             <b>{n.title}</b>
             <button
               onClick={() => deleteNotice(n.id)}
               style={{
                 background: "#ef4444",
                 color: "white",
-                padding: "4px 10px",
+              
                 borderRadius: "6px",
-                fontSize: "12px"
+                fontSize: "12px",
+                display:"flex",
+                
               }}
             >
-              🗑 Delete
+              <span style={{display:"block",marginRight:"6px"}}>🗑</span> Delete
             </button>
           </div>
 
@@ -122,7 +126,7 @@ export default function NoticePanel() {
             {n.notice_type}
           </p>
 
-          <ul>
+          <ul style={{listStyle:"none"}}>
             {n.files.map(f => (
               <li key={f.id}>
                 <a
@@ -131,7 +135,7 @@ export default function NoticePanel() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  📎 Download
+                   Open
                 </a>
               </li>
             ))}
