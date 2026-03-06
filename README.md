@@ -73,28 +73,154 @@ This project is built with **Django + React** and follows **industry-level backe
 Smart-Attendance/
 │
 ├── backend/
-│   ├── config/               # Django settings, URLs, JWT, DB
+│   │
+│   ├── manage.py
+│   ├── requirements.txt
+│   ├── blink_detection_task_test.py
+│   ├── face_detection_test.py
+│   ├── head_movement_task_test.py
+│   ├── test_spoof_detection.py
+│   │
+│   ├── config/
+│   │   ├── __init__.py
+│   │   ├── asgi.py
+│   │   ├── settings.py          # PostgreSQL, JWT, AUTH_USER_MODEL
+│   │   ├── urls.py              # Main API routing
+│   │   └── wsgi.py
+│   │
 │   ├── apps/
-│   │   ├── accounts/         # Auth, login, password, face registration
-│   │   ├── teachers/         # Teacher controls & reports
-│   │   ├── students/         # Student profiles & views
-│   │   ├── attendance/       # Attendance sessions & records
-│   │   ├── face_liveness/    # Face matching & liveness logic
-│   │   └── reports/          # Future analytics
-│   ├── anti_spoofing/        # CNN spoof detection model
-│   └── tests/                # Experimental CV tests
+│   │   │
+│   │   ├── accounts/            # AUTH & SECURITY
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py
+│   │   │   ├── apps.py
+│   │   │   ├── models.py        # Custom User (role, face_embedding, is_first_login)
+│   │   │   ├── serializers.py   # Login (email-based)
+│   │   │   ├── forms.py 
+│   │   │   ├── views.py         # Login, ChangePassword, RegisterFace
+│   │   │   ├── urls.py
+│   │   │   └── migrations/
+│   │   │
+│   │   ├── teachers/            # TEACHER DOMAIN
+│   │   │   ├── __init__.py
+│   │   │   ├── apps.py
+│   │   │   ├── models.py        # TeacherProfile
+│   │   │   ├── views.py         # Bulk upload, Add single student,
+│   │   │   ├── signals.py
+│   │   │   ├── serializers.py                 
+│   │   │   ├── urls.py
+│   │   │   └── migrations/
+│   │   │
+│   │   ├── students/            # STUDENT DOMAIN
+│   │   │   ├── __init__.py
+│   │   │   ├── apps.py
+│   │   │   ├── models.py        # StudentProfile (linked to TeacherProfile)
+│   │   │   ├── views.py         # (attendance summary & history – next)
+│   │   │   ├── urls.py
+│   │   │   └── migrations/
+│   │   │
+│   │   ├── attendance/          # ATTENDANCE ENGINE
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py
+│   │   │   ├── apps.py
+│   │   │   ├── models.py        
+│   │   │   ├── serializers.py
+│   │   │   ├── views.py         
+│   │   │   ├── urls.py
+│   │   │   └── migrations/
+│   │   │
+│   │   ├── face_liveness/       # LIVENESS & FACE MATCHING
+│   │   │   ├── __init__.py
+│   │   │   ├── apps.py
+│   │   │   ├── liveness_engine.py
+│   │   │   ├── face_matcher.py
+│   │   │   └── views.py
+│   │   │
+│   │   ├── qr_attendance/       # (LOGIC MOVED INTO attendance)
+│   │   │   ├── apps.py
+│   │   │   ├── models.py        
+│   │   │   ├── views.py         
+│   │   │   ├── urls.py
+│   │   │
+│   │   ├── reports/             # FUTURE EXTENSIONS
+│   │   │   ├── __init__.py
+│   │   │   ├── apps.py
+│   │   │   ├── models.py        
+│   │   │   ├── views.py         
+│   │   │   ├── urls.py
+│   │   │   ├── test.py
+│   │   │   └── migrations/
+│   │
+│   ├── anti_spoofing/            # CNN SPOOF DETECTION
+│   │   ├── spoof_detector.py
+│   │   ├── model.py
+│   |	  ├── test_spoof.py
+│   │   └── 2.7_80x80_MiniFASNetV2.pth
+│   │
+│   └── tests/                    # EXPERIMENTAL TESTS
+│       ├── blink_detection_task_test.py
+│       ├── face_detection_test.py
+│       ├── head_movement_task_test.py
+│       └── test_spoof_detection.py
 │
 ├── frontend/
+│   │
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   │
 │   ├── src/
-│   │   ├── api/              # Axios JWT handler
-│   │   ├── pages/            # Login, dashboards
-│   │   ├── components/       # Camera & face capture
+│   │   ├── main.jsx
+│   │   ├── App.jsx               # Routes (login, dashboards, change-password)
+│   │   ├── index.css
+│   │   ├── App.jsx
+│   │   │
+│   │   ├── api/
+│   │   │   └── axios.js           # JWT + auto refresh
+│   │   │
+│   │   ├── pages/
+│   │   │   ├── Login.jsx
+│   │   │   ├── Login.css
+│   │   │   ├── ForgotPassword.jsx
+│   │   │   ├── EditTeachersProfile.jsx
+│   │   │   ├── ChangePassword.jsx
+│   │   │   ├── TeacherDashboard.jsx
+│   │   │   ├── TeacherDashboard.css
+│   │   │   ├── ResetPassword.jsx
+│   │   │   ├── StudentDashboard.jsx   
+│   │   │   └── AddStudent.jsx
+│   │   │
+│   │   ├──auth/
+│   │   │   └── login.jsx
+│   │   │
+│   │   ├──components/
+│   │   │   |
+│   │   │   ├── student/
+│   │   │   ├── AttendanceHistory.jsx
+│   │   │   ├── AttendanceStatusCard.jsx
+│   │   │   ├── AttendanceSummary.jsx
+│   │   │   ├── ScanQR.jsx
+│   │   │   └── StudentTopBar.jsx
+│   │   │   │
+│   │   │   ├── AlertsBanner.jsx
+│   │   │   ├── AttendanceControls.jsx
+│   │   │   ├── AttendanceStatus.jsx
+│   │   │   ├── CameraCapture.jsx
+│   │   │   ├── LiveAttendanceTable.jsx
+│   │   │   ├── RegisterFace.jsx
+│   │   │   ├── ReportsSection.jsx
+│   │   │   ├── StudentManagement.jsx
+│   │   │   ├── StudentTopBar.jsx
+│   │   │   └── TeacherTopBar.jsx
+│   │   │
 │   │   └── styles/
+│   │       └── common.css         # Shared UI polish
 │
 ├── docs/
+│
 ├── README.md
 └── PROJECT_CONTEXT.txt
-```
+
 
 ---
 
