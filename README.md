@@ -293,9 +293,9 @@ This project is suitable for:
 
 ---
 
-## Author
+Author
 
-**Amaan Behlim**
+Amaan Behlim
 CSE (AI/ML) | Smart Attendance System
 Focused on **AI + Backend + Security Engineering**
 
